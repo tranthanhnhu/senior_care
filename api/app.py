@@ -10,7 +10,7 @@ api/app.py - FastAPI entry point cho web app.
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 import config
 from api.chat import ChatRequest, ChatResponse, process_chat
 from api.news import get_daily_greeting, get_health_tip, get_today_news
+from api.stt import transcribe_upload
 
 # Duong dan thu muc web static
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -79,6 +80,12 @@ def greeting():
 def health_tip():
     """Meo suc khoe ngau nhien."""
     return get_health_tip()
+
+
+@app.post("/api/stt")
+async def speech_to_text(audio: UploadFile = File(...)):
+    """STT fallback: ghi am tu Chrome iOS -> Whisper."""
+    return await transcribe_upload(audio)
 
 
 # Serve static assets (css, js, manifest)

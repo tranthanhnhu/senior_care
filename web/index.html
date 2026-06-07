@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0b1220">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Senior Care">
   <title>Senior Care Assistant</title>
   <link rel="manifest" href="/manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,65 +14,83 @@
 </head>
 <body class="flex flex-col h-dvh page-with-nav">
 
-  <!-- Header -->
-  <header class="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700 shrink-0">
-    <div>
-      <h1 class="text-xl font-bold text-sky-400">Senior Care</h1>
-      <p class="text-xs text-slate-400">Voice Assistant</p>
+  <!-- Header + dong thuoc compact -->
+  <header class="header-compact shrink-0">
+    <div class="header-row">
+      <div>
+        <h1 class="text-lg font-bold text-sky-400 leading-tight">Senior Care</h1>
+        <div id="clock" class="text-sm font-semibold text-slate-300"></div>
+      </div>
+      <div class="text-right">
+        <span id="status-pill" class="status-pill status-pill-sm">Ready</span>
+        <button id="logout-btn" class="logout-link" type="button">Sign out</button>
+      </div>
     </div>
-    <div class="text-right">
-      <div id="clock" class="text-lg font-bold text-slate-100"></div>
-      <button id="logout-btn" class="logout-link" type="button">Sign out</button>
+    <!-- Thuoc: 1 dong nho tren header -->
+    <div id="med-countdown-card" class="med-strip">
+      <span class="med-strip-icon">&#x1F48A;</span>
+      <div class="med-strip-text">
+        <span id="countdown-label" class="med-strip-label">Next medicine</span>
+        <span id="countdown-sub" class="med-strip-sub"></span>
+      </div>
+      <span id="countdown-timer" class="med-strip-timer">--:--</span>
+    </div>
+    <div id="countdown-actions" class="countdown-actions hidden">
+      <button id="card-took-btn" type="button" class="btn-confirm-med btn-confirm-sm">Yes, I took it</button>
     </div>
   </header>
 
-  <!-- Dem nguoc uong thuoc -->
-  <div id="med-countdown-card" class="med-countdown-card shrink-0">
-    <div class="med-countdown-label" id="countdown-label">Loading schedule...</div>
-    <div class="med-countdown-timer" id="countdown-timer">--:--:--</div>
-    <div class="med-countdown-sub" id="countdown-sub"></div>
-    <div id="countdown-actions" class="countdown-actions hidden">
-      <button id="card-took-btn" type="button" class="btn-confirm-med">Yes, I took my medicine</button>
-    </div>
+  <!-- Canh bao trinh duyet (noi dung do JS dien) -->
+  <div id="browser-banner" class="browser-banner hidden">
+    <span id="browser-banner-text"></span>
+    <button id="copy-url-btn" type="button" class="browser-banner-btn hidden">Copy Safari link</button>
   </div>
 
-  <!-- Status -->
-  <div class="px-4 py-1 shrink-0">
-    <span id="status-pill" class="status-pill">Ready</span>
-  </div>
-
-  <!-- Chat area -->
+  <!-- Chat (uu tien khong gian) -->
   <div id="chat-area" class="chat-scroll flex-1"></div>
 
-  <!-- Speak + Quick actions -->
-  <div class="px-4 py-3 bg-slate-900 border-t border-slate-700 shrink-0">
-    <div class="flex flex-col items-center gap-2 mb-3">
-      <p id="speak-hint" class="text-sm text-slate-400">Tap to Speak</p>
-      <button id="speak-btn" type="button" class="speak-btn" aria-label="Tap to speak">&#x1F3A4;</button>
+  <!-- Panel duoi: mic + quick actions (co the an/hien) -->
+  <div class="bottom-panel shrink-0">
+    <div class="bottom-panel-toolbar">
+      <button id="toggle-actions-btn" type="button" class="toggle-actions-btn" aria-expanded="true">
+        <span id="toggle-actions-label">Hide menu</span>
+        <span id="toggle-actions-icon" class="toggle-icon">&#x25BC;</span>
+      </button>
     </div>
-    <div class="grid grid-cols-2 gap-2 mb-3">
-      <button id="quick-meds" type="button" class="quick-btn bg-blue-700 text-white">&#x1F48A; My Medicine</button>
-      <button id="quick-news" type="button" class="quick-btn bg-cyan-800 text-white">&#x1F4F0; Today's News</button>
-      <button id="quick-greeting" type="button" class="quick-btn bg-indigo-700 text-white">&#x1F305; Good Day</button>
-      <button id="quick-family" type="button" class="quick-btn bg-purple-700 text-white">&#x1F4DE; Call Family</button>
-      <button id="quick-tip" type="button" class="quick-btn bg-teal-800 text-white">&#x1F49A; Health Tip</button>
-      <button id="quick-lonely" type="button" class="quick-btn bg-amber-800 text-white">&#x1F4AC; Chat With Me</button>
+
+    <!-- Mic luon hien — khong nam trong panel an/hien -->
+    <div class="speak-row">
+      <button id="speak-btn" type="button" class="speak-btn speak-btn-sm" aria-label="Tap to speak">&#x1F3A4;</button>
+      <div class="speak-meta">
+        <p id="speak-hint" class="speak-hint">Tap to Speak</p>
+        <p class="speak-hint-sub">Or type your message below</p>
+      </div>
     </div>
-    <div class="flex gap-2">
-      <input id="text-input" type="text" placeholder="Or type here..."
+
+    <div id="collapsible-actions" class="collapsible-actions">
+      <div class="grid grid-cols-2 gap-2 px-4 pb-2">
+        <button id="quick-meds" type="button" class="quick-btn bg-blue-700 text-white">&#x1F48A; My Medicine</button>
+        <button id="quick-news" type="button" class="quick-btn bg-cyan-800 text-white">&#x1F4F0; Today's News</button>
+        <button id="quick-greeting" type="button" class="quick-btn bg-indigo-700 text-white">&#x1F305; Good Day</button>
+        <button id="quick-family" type="button" class="quick-btn bg-purple-700 text-white">&#x1F4DE; Call Family</button>
+        <button id="quick-tip" type="button" class="quick-btn bg-teal-800 text-white">&#x1F49A; Health Tip</button>
+        <button id="quick-lonely" type="button" class="quick-btn bg-amber-800 text-white">&#x1F4AC; Chat With Me</button>
+      </div>
+    </div>
+
+    <div class="input-row">
+      <input id="text-input" type="text" placeholder="Type a message..."
              class="input-lg flex-1" autocomplete="off">
-      <button id="send-btn" type="button" class="quick-btn bg-sky-500 text-slate-900 px-5">Send</button>
+      <button id="send-btn" type="button" class="quick-btn bg-sky-500 text-slate-900 px-4">Send</button>
     </div>
   </div>
 
-  <!-- Bottom nav (3 muc chinh, khong co logout) -->
   <nav class="bottom-nav">
     <a href="/" class="nav-item active"><span class="icon">&#x1F3E0;</span>Home</a>
     <a href="/medications" class="nav-item"><span class="icon">&#x1F48A;</span>Meds</a>
     <a href="/contacts" class="nav-item"><span class="icon">&#x1F4DE;</span>Contacts</a>
   </nav>
 
-  <!-- Modal nhac uong thuoc (chuong + xac nhan) -->
   <div id="reminder-overlay" class="reminder-overlay hidden" role="alertdialog" aria-modal="true">
     <div class="reminder-modal">
       <div class="reminder-bell">&#x1F514;</div>

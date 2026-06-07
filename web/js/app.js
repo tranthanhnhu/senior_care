@@ -5,7 +5,7 @@
 import {
   requireAuth, fetchMedications, fetchContacts,
   describeMedicationStatus, findContact, getDueMedications,
-  logMedicationTaken, getMedicationScheduleInfo, formatCountdown,
+  logMedicationTaken, getMedicationScheduleInfo,
 } from "./supabase-client.js";
 import { onAuthReady, logout, handleAuthCallback } from "./auth.js";
 
@@ -21,15 +21,29 @@ let bellInterval = null;
 let activeReminderMed = null;
 const snoozedUntil = new Map(); // medId -> timestamp
 
-// --- Web Speech API ---
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+// --- Trinh duyet & giong noi ---
+const ua = navigator.userAgent;
+const isIOS = /iPad|iPhone|iPod/.test(ua) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isSafariIOS = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+const isChromeIOS = /CriOS/.test(ua);
+/** PWA tu man hinh chinh — Apple khong cho Web Speech hoat dong o che do nay */
+const isStandalonePWA =
+  window.navigator.standalone === true ||
+  window.matchMedia("(display-mode: standalone)").matches ||
+  window.matchMedia("(display-mode: fullscreen)").matches;
+/** Apple chi cho Web Speech tren Safari tab — Chrome/PWA phai ghi am + Whisper */
+const forceRecordSTT =
+  isChromeIOS || (isIOS && !isSafariIOS) || (isIOS && isStandalonePWA);
 
 let recognition = null;
 let isListening = false;
+let mediaRecorder = null;
+let recordStream = null;
+let recordChunks = [];
 
 function initSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return null;
   recognition = new SpeechRecognition();
   recognition.lang = "en-US";
@@ -39,6 +53,36 @@ function initSpeech() {
   return recognition;
 }
 
+function formatCountdownCompact(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+  if (hrs > 0) return `${hrs}h ${String(mins).padStart(2, "0")}m`;
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+function pickRecorderMime() {
+  if (!window.MediaRecorder) return "";
+  for (const t of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/aac"]) {
+    if (MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return "";
+}
+
+async function transcribeRecording(blob) {
+  const ext = blob.type.includes("mp4") ? "mp4" : blob.type.includes("aac") ? "aac" : "webm";
+  const form = new FormData();
+  form.append("audio", blob, `recording.${ext}`);
+  setStatus("Understanding...");
+  const res = await fetch("/api/stt", { method: "POST", body: form });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "STT failed");
+  }
+  return res.json();
+}
+
 function speak(text) {
   if (!text || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
@@ -46,6 +90,14 @@ function speak(text) {
   u.lang = "en-US";
   u.rate = 0.85;
   window.speechSynthesis.speak(u);
+}
+
+/** iOS PWA can kich hoat speechSynthesis bang cu chi nguoi dung */
+function unlockSpeechOnIOS() {
+  if (!isIOS || !window.speechSynthesis) return;
+  try {
+    window.speechSynthesis.getVoices();
+  } catch { /* ignore */ }
 }
 
 /** Phat am thanh chuong nhac thuoc (Web Audio API) */
@@ -105,7 +157,9 @@ function setStatus(text, listening = false) {
   const el = document.getElementById("status-pill");
   if (!el) return;
   el.textContent = text;
-  el.className = listening ? "status-pill listening" : "status-pill";
+  el.className = listening
+    ? "status-pill status-pill-sm listening"
+    : "status-pill status-pill-sm";
 }
 
 // --- Goi API NLP ---
@@ -160,26 +214,12 @@ async function processUserMessage(text) {
   }
 }
 
-// --- Mic: TAP de noi (hoat dong tren iPhone Safari) ---
-function setupMicButton() {
-  const btn = document.getElementById("speak-btn");
-  const hint = document.getElementById("speak-hint");
-  if (!btn) return;
-
-  if (!SpeechRecognition) {
-    hint.textContent = "Voice not available — please type your message";
-    btn.style.opacity = "0.45";
-    btn.disabled = true;
-    return;
-  }
-
+// --- Mic: Web Speech (Safari) hoac ghi am + Whisper (Chrome iPhone) ---
+function setupWebSpeechMic(btn, hint) {
   initSpeech();
+  if (!recognition) return;
 
-  if (isIOS) {
-    hint.textContent = "Tap to Speak (use Safari browser)";
-  } else {
-    hint.textContent = "Tap to Speak";
-  }
+  hint.textContent = isIOS ? "Tap to Speak" : "Tap to Speak";
 
   recognition.onresult = (e) => {
     const text = e.results[0]?.[0]?.transcript;
@@ -201,8 +241,8 @@ function setupMicButton() {
     setStatus("Ready");
   };
 
-  // iOS: chi dung click/tap — KHONG dung hold, KHONG preventDefault tren touch
   btn.addEventListener("click", () => {
+    unlockSpeechOnIOS();
     if (!recognition) return;
 
     if (isListening) {
@@ -217,10 +257,9 @@ function setupMicButton() {
       recognition.start();
       isListening = true;
       btn.classList.add("listening");
-      setStatus("Listening... tap again to stop", true);
+      setStatus("Listening...", true);
       speak("I'm listening.");
     } catch {
-      // Da chay roi — thu stop roi start lai
       try {
         recognition.stop();
         setTimeout(() => {
@@ -236,7 +275,158 @@ function setupMicButton() {
   });
 }
 
-// --- Dem nguoc thuoc ---
+function setupRecordMic(btn, hint) {
+  hint.textContent = isStandalonePWA
+    ? "Tap mic · speak · tap again"
+    : "Tap mic · speak · tap again";
+  let recording = false;
+
+  const onMicTap = async () => {
+    unlockSpeechOnIOS();
+
+    if (!recording) {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+        speak("Voice is not available here. Please type your message.");
+        return;
+      }
+      try {
+        recordStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mime = pickRecorderMime();
+        mediaRecorder = mime
+          ? new MediaRecorder(recordStream, { mimeType: mime })
+          : new MediaRecorder(recordStream);
+        recordChunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size) recordChunks.push(e.data);
+        };
+        mediaRecorder.onstop = async () => {
+          recordStream?.getTracks().forEach((t) => t.stop());
+          recordStream = null;
+          recording = false;
+          isListening = false;
+          btn.classList.remove("listening");
+          if (!recordChunks.length) {
+            setStatus("Ready");
+            return;
+          }
+          const blob = new Blob(recordChunks, {
+            type: mediaRecorder.mimeType || recordChunks[0]?.type || "audio/webm",
+          });
+          try {
+            const data = await transcribeRecording(blob);
+            if (data.text) processUserMessage(data.text);
+            else speak("Sorry, I didn't hear you. Please try again.");
+          } catch {
+            speak("Sorry, voice recognition failed. Please type your message.");
+          }
+          setStatus("Ready");
+        };
+        mediaRecorder.start();
+        recording = true;
+        isListening = true;
+        btn.classList.add("listening");
+        setStatus("Recording...", true);
+        speak("I'm listening.");
+      } catch {
+        speak("Please allow microphone access in browser settings.");
+        setStatus("Ready");
+      }
+      return;
+    }
+
+    try {
+      mediaRecorder?.stop();
+    } catch { /* ignore */ }
+  };
+
+  btn.addEventListener("click", onMicTap);
+}
+
+function setupMicButton() {
+  const btn = document.getElementById("speak-btn");
+  const hint = document.getElementById("speak-hint");
+  if (!btn) return;
+
+  const hasWebSpeech = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const hasRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+
+  if (hasWebSpeech && !forceRecordSTT) {
+    setupWebSpeechMic(btn, hint);
+    return;
+  }
+  if (hasRecord) {
+    setupRecordMic(btn, hint);
+    return;
+  }
+
+  hint.textContent = "Voice not available — please type";
+  btn.style.opacity = "0.45";
+  btn.disabled = true;
+}
+
+function setupCollapsiblePanel() {
+  const btn = document.getElementById("toggle-actions-btn");
+  const panel = document.getElementById("collapsible-actions");
+  const label = document.getElementById("toggle-actions-label");
+  const icon = document.getElementById("toggle-actions-icon");
+  if (!btn || !panel) return;
+
+  const setCollapsed = (collapsed) => {
+    panel.classList.toggle("collapsed", collapsed);
+    localStorage.setItem("actionsCollapsed", collapsed ? "true" : "false");
+    if (label) label.textContent = collapsed ? "Show menu" : "Hide menu";
+    if (icon) icon.textContent = collapsed ? "\u25B2" : "\u25BC";
+    btn.setAttribute("aria-expanded", String(!collapsed));
+  };
+
+  setCollapsed(localStorage.getItem("actionsCollapsed") === "true");
+  btn.addEventListener("click", () => {
+    setCollapsed(!panel.classList.contains("collapsed"));
+  });
+}
+
+function setupBrowserBanner() {
+  const banner = document.getElementById("browser-banner");
+  const textEl = document.getElementById("browser-banner-text");
+  const copyBtn = document.getElementById("copy-url-btn");
+  if (!banner || !textEl) return;
+
+  const hasRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+
+  if (isIOS && isStandalonePWA && hasRecord) {
+    textEl.textContent =
+      "Home screen app: tap mic, speak, then tap again. Allow microphone when asked.";
+    banner.classList.remove("hidden");
+  } else if (isIOS && isStandalonePWA && !hasRecord) {
+    textEl.innerHTML =
+      "Voice may not work in the home screen app. Open this page in <strong>Safari</strong> instead.";
+    copyBtn?.classList.remove("hidden");
+    banner.classList.remove("hidden");
+  } else if (isChromeIOS && hasRecord) {
+    textEl.textContent =
+      "Chrome on iPhone: tap mic, speak, then tap again. Safari is faster for voice.";
+    banner.classList.remove("hidden");
+  } else if (isIOS && !isSafariIOS && !hasRecord) {
+    textEl.innerHTML =
+      "Voice needs <strong>Safari</strong> on iPhone. Copy link and open in Safari, or type below.";
+    copyBtn?.classList.remove("hidden");
+    banner.classList.remove("hidden");
+  } else {
+    return;
+  }
+
+  copyBtn?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => { copyBtn.textContent = "Copy Safari link"; }, 2500);
+    } catch {
+      copyBtn.textContent = "Copy failed";
+    }
+  });
+}
+
+// --- Dem nguoc thuoc (dong nho tren header) ---
 function renderCountdownCard() {
   const info = getMedicationScheduleInfo(medications);
   countdownState = info.state;
@@ -246,6 +436,7 @@ function renderCountdownCard() {
   const label = document.getElementById("countdown-label");
   const timer = document.getElementById("countdown-timer");
   const sub = document.getElementById("countdown-sub");
+  const actions = document.getElementById("countdown-actions");
 
   if (!card) return;
 
@@ -253,22 +444,26 @@ function renderCountdownCard() {
 
   if (info.state === "due") {
     card.classList.add("due");
-    label.textContent = "Medicine time!";
-    timer.textContent = "TAKE NOW";
-    sub.textContent = info.med ? `${info.med.name}${info.med.dose ? ` · ${info.med.dose}` : ""}` : "";
-    document.getElementById("countdown-actions")?.classList.remove("hidden");
+    label.textContent = "Take now";
+    timer.textContent = "NOW";
+    sub.textContent = info.med
+      ? `${info.med.name}${info.med.dose ? ` · ${info.med.dose}` : ""}`
+      : "";
+    actions?.classList.remove("hidden");
   } else if (info.state === "waiting") {
     card.classList.add("waiting");
-    label.textContent = "Next medicine in";
-    timer.textContent = info.countdownText;
-    sub.textContent = `${info.med.name} at ${info.med.time}${info.med.dose ? ` · ${info.med.dose}` : ""}`;
-    document.getElementById("countdown-actions")?.classList.add("hidden");
+    label.textContent = "Next medicine";
+    timer.textContent = formatCountdownCompact(countdownSeconds);
+    sub.textContent = info.med
+      ? `${info.med.name} · ${info.med.time}${info.med.dose ? ` · ${info.med.dose}` : ""}`
+      : "";
+    actions?.classList.add("hidden");
   } else {
     card.classList.add("none");
     label.textContent = "No medicines today";
-    timer.textContent = "--:--:--";
-    sub.textContent = "Add medicines in the Meds tab";
-    document.getElementById("countdown-actions")?.classList.add("hidden");
+    timer.textContent = "--:--";
+    sub.textContent = "Add in Meds tab";
+    actions?.classList.add("hidden");
   }
 }
 
@@ -276,7 +471,7 @@ function tickCountdown() {
   if (countdownState === "waiting" && countdownSeconds > 0) {
     countdownSeconds -= 1;
     const el = document.getElementById("countdown-timer");
-    if (el) el.textContent = formatCountdown(countdownSeconds);
+    if (el) el.textContent = formatCountdownCompact(countdownSeconds);
     if (countdownSeconds <= 0) renderCountdownCard();
   } else if (countdownState !== "due") {
     renderCountdownCard();
@@ -508,6 +703,8 @@ async function init() {
   contacts = await fetchContacts();
 
   setupMicButton();
+  setupCollapsiblePanel();
+  setupBrowserBanner();
   setupQuickActions();
   setupTextInput();
   setupLogout();

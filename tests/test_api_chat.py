@@ -92,3 +92,10 @@ def test_news_fallback(monkeypatch):
     r = client.get("/api/news")
     assert r.status_code == 200
     assert "summary" in r.json()
+
+
+def test_stt_requires_openai(monkeypatch):
+    """STT fallback tra 503 neu chua co OpenAI key."""
+    monkeypatch.setattr("config.OPENAI_API_KEY", "")
+    r = client.post("/api/stt", files={"audio": ("test.webm", b"fake", "audio/webm")})
+    assert r.status_code == 503

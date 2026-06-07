@@ -4,6 +4,7 @@
   "description": "AI Voice Assistant for Elderly Healthcare Support",
   "start_url": "/",
   "display": "standalone",
+  "permissions": ["microphone"],
   "background_color": "#0b1220",
   "theme_color": "#0b1220",
   "orientation": "portrait",

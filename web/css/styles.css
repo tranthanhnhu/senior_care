@@ -273,7 +273,227 @@ body {
   50% { opacity: 0.7; }
 }
 
-/* Dem nguoc uong thuoc */
+/* Dem nguoc thuoc — dong compact tren header */
+.header-compact {
+  background: #0f172a;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px 8px;
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+.header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.status-pill-sm {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+}
+
+.med-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.med-strip.due {
+  background: #422006;
+  border-color: #fbbf24;
+}
+
+.med-strip.waiting {
+  background: #0c2340;
+  border-color: #334155;
+}
+
+.med-strip.none {
+  opacity: 0.75;
+}
+
+.med-strip-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.med-strip-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.med-strip-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.med-strip-sub {
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.med-strip-timer {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.med-strip.due .med-strip-timer {
+  color: #fbbf24;
+}
+
+.countdown-actions {
+  margin-top: 6px;
+}
+
+.btn-confirm-sm {
+  min-height: 40px;
+  font-size: 0.95rem;
+  margin-top: 0;
+  border-radius: 10px;
+}
+
+/* Panel duoi: mic + 6 nut (an/hien) */
+.bottom-panel {
+  background: #0f172a;
+  border-top: 1px solid var(--border);
+}
+
+.bottom-panel-toolbar {
+  display: flex;
+  justify-content: center;
+  padding: 4px 12px 0;
+}
+
+.toggle-actions-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.toggle-actions-btn:active {
+  color: var(--accent);
+}
+
+.toggle-icon {
+  font-size: 0.65rem;
+}
+
+.collapsible-actions {
+  overflow: hidden;
+  max-height: 240px;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  opacity: 1;
+}
+
+.collapsible-actions.collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.speak-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 6px;
+}
+
+.speak-btn-sm {
+  width: 56px;
+  height: 56px;
+  font-size: 1.4rem;
+  border-width: 3px;
+  flex-shrink: 0;
+}
+
+.speak-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.speak-hint {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+}
+
+.speak-hint-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  align-items: stretch;
+}
+
+.input-row .input-lg {
+  min-height: 48px;
+  padding: 12px 14px;
+  font-size: 1rem;
+}
+
+.input-row .quick-btn {
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+/* Banner trinh duyet */
+.browser-banner {
+  flex-shrink: 0;
+  background: #422006;
+  border-bottom: 1px solid #fbbf24;
+  color: #fde68a;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.browser-banner-btn {
+  display: block;
+  margin: 6px auto 0;
+  background: #fbbf24;
+  color: #0b1220;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Legacy card (giu neu trang khac dung) */
 .med-countdown-card {
   margin: 10px 16px 0;
   padding: 16px 18px;
@@ -341,7 +561,7 @@ body {
 
 /* Nut speak lon hon tren mobile */
 @media (max-width: 480px) {
-  .speak-btn {
+  .speak-btn:not(.speak-btn-sm) {
     width: 96px;
     height: 96px;
     font-size: 2.2rem;

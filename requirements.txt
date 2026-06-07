@@ -1,0 +1,26 @@
+# ============================================================
+# AI Voice Assistant for Elderly Healthcare Support
+# pip install -r requirements.txt
+# ============================================================
+
+# --- Web app (FastAPI + deploy) ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+httpx==0.28.1
+
+# --- Config & NLP ---
+python-dotenv==1.0.1
+openai==1.57.0
+
+# --- Supabase (optional server-side; frontend uses supabase-js) ---
+supabase==2.11.0
+
+# --- Testing ---
+pytest==8.3.4
+
+# --- Desktop app (tuy chon - chay python main.py) ---
+SpeechRecognition==3.10.4
+PyAudio==0.2.14
+gTTS==2.5.4
+pygame==2.6.1

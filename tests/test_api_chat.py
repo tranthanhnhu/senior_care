@@ -69,3 +69,26 @@ def test_serve_index():
 def test_serve_login():
     r = client.get("/login")
     assert r.status_code == 200
+
+
+def test_greeting():
+    r = client.get("/api/greeting")
+    assert r.status_code == 200
+    data = r.json()
+    assert "greeting" in data
+
+
+def test_health_tip():
+    r = client.get("/api/health-tip")
+    assert r.status_code == 200
+    assert "tip" in r.json()
+
+
+def test_news_fallback(monkeypatch):
+    """News endpoint tra ve JSON hop le (co the loi mang tren CI)."""
+    def fail_fetch(*_a, **_k):
+        raise ConnectionError("offline")
+    monkeypatch.setattr("api.news._fetch_headlines", fail_fetch)
+    r = client.get("/api/news")
+    assert r.status_code == 200
+    assert "summary" in r.json()

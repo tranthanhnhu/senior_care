@@ -137,3 +137,62 @@ export async function logMedicationTaken(medicationId, userId) {
   });
   if (error) throw error;
 }
+
+/** Thong tin lan uong thuoc tiep theo + dem nguoc */
+export function getMedicationScheduleInfo(medications) {
+  if (!medications || medications.length === 0) {
+    return { state: "none", countdownText: "--:--:--", label: "No medicines scheduled" };
+  }
+
+  const due = getDueMedications(medications);
+  if (due.length > 0) {
+    const m = due[0];
+    return {
+      state: "due",
+      med: m,
+      allDue: due,
+      secondsUntil: 0,
+      countdownText: "NOW",
+      label: `Time to take: ${m.name}`,
+    };
+  }
+
+  const now = new Date();
+  const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+  let bestMed = null;
+  let bestDiff = Infinity;
+
+  for (const med of medications) {
+    const [h, m] = med.time.split(":").map(Number);
+    let targetSec = h * 3600 + m * 60;
+    if (targetSec <= nowSec) targetSec += 24 * 3600;
+    const diff = targetSec - nowSec;
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestMed = med;
+    }
+  }
+
+  const hrs = Math.floor(bestDiff / 3600);
+  const mins = Math.floor((bestDiff % 3600) / 60);
+  const secs = bestDiff % 60;
+  const countdownText = `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+
+  return {
+    state: "waiting",
+    med: bestMed,
+    secondsUntil: bestDiff,
+    countdownText,
+    label: `Next: ${bestMed.name} at ${bestMed.time}`,
+  };
+}
+
+/** Format giay thanh HH:MM:SS */
+export function formatCountdown(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+  return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}

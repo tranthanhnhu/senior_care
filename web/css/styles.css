@@ -272,3 +272,159 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
+
+/* Dem nguoc uong thuoc */
+.med-countdown-card {
+  margin: 10px 16px 0;
+  padding: 16px 18px;
+  border-radius: 16px;
+  text-align: center;
+  border: 2px solid var(--border);
+  background: var(--card);
+}
+
+.med-countdown-card.due {
+  background: #422006;
+  border-color: #fbbf24;
+  animation: pulse 2s infinite;
+}
+
+.med-countdown-card.waiting {
+  background: #0c2340;
+  border-color: var(--accent);
+}
+
+.med-countdown-label {
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.med-countdown-timer {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.med-countdown-card.due .med-countdown-timer {
+  color: #fbbf24;
+  font-size: 1.8rem;
+}
+
+.med-countdown-sub {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-top: 6px;
+  opacity: 0.9;
+}
+
+/* Nut sign out an, nho o header */
+.logout-link {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 2px 0;
+  margin-top: 2px;
+  text-decoration: underline;
+  opacity: 0.7;
+}
+
+.logout-link:active {
+  opacity: 1;
+  color: var(--muted);
+}
+
+/* Nut speak lon hon tren mobile */
+@media (max-width: 480px) {
+  .speak-btn {
+    width: 96px;
+    height: 96px;
+    font-size: 2.2rem;
+  }
+  .med-countdown-timer {
+    font-size: 2rem;
+  }
+}
+
+.hidden { display: none !important; }
+
+/* Nut xac nhan uong thuoc */
+.btn-confirm-med {
+  width: 100%;
+  min-height: 58px;
+  background: #16a34a;
+  color: white;
+  font-weight: 800;
+  font-size: 1.15rem;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  margin-top: 12px;
+  touch-action: manipulation;
+}
+
+.btn-snooze {
+  width: 100%;
+  min-height: 48px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.countdown-actions { margin-top: 12px; }
+
+/* Modal nhac thuoc */
+.reminder-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.reminder-modal {
+  background: #1e293b;
+  border: 3px solid #fbbf24;
+  border-radius: 20px;
+  padding: 28px 24px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  animation: slideDown 0.35s ease;
+}
+
+.reminder-bell {
+  font-size: 3.5rem;
+  animation: ring 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes ring {
+  from { transform: rotate(-12deg); }
+  to { transform: rotate(12deg); }
+}
+
+.reminder-modal-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fbbf24;
+  margin: 12px 0 8px;
+}
+
+.reminder-modal-text {
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: var(--text);
+}

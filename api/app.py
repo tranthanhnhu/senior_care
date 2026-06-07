@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 import config
 from api.chat import ChatRequest, ChatResponse, process_chat
+from api.news import get_daily_greeting, get_health_tip, get_today_news
 
 # Duong dan thu muc web static
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -57,6 +58,27 @@ def chat(body: ChatRequest):
         return process_chat(body.text)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/news")
+def news():
+    """Tin tuc hom nay (RSS mien phi + tom tat de doc)."""
+    try:
+        return get_today_news()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/greeting")
+def greeting():
+    """Loi chao theo buoi trong ngay."""
+    return get_daily_greeting()
+
+
+@app.get("/api/health-tip")
+def health_tip():
+    """Meo suc khoe ngau nhien."""
+    return get_health_tip()
 
 
 # Serve static assets (css, js, manifest)

@@ -35,16 +35,9 @@
     <a href="/" class="nav-item"><span class="icon">&#x1F3E0;</span>Home</a>
     <a href="/medications" class="nav-item active"><span class="icon">&#x1F48A;</span>Meds</a>
     <a href="/contacts" class="nav-item"><span class="icon">&#x1F4DE;</span>Contacts</a>
-    <a href="#" id="nav-logout" class="nav-item"><span class="icon">&#x1F6AA;</span>Logout</a>
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="/js/medications.js"></script>
-  <script type="module">
-    import { logout } from "/js/auth.js";
-    document.getElementById("nav-logout")?.addEventListener("click", (e) => {
-      e.preventDefault(); logout();
-    });
-  </script>
 </body>
 </html>

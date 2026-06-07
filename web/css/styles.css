@@ -571,6 +571,24 @@ body {
   }
 }
 
+.open-link-btn {
+  display: block;
+  margin-top: 12px;
+  padding: 14px 18px;
+  background: var(--accent);
+  color: #0b1220;
+  font-weight: 800;
+  font-size: 1rem;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 12px;
+  touch-action: manipulation;
+}
+
+.open-link-btn:active {
+  opacity: 0.9;
+}
+
 .hidden { display: none !important; }
 
 /* Nut xac nhan uong thuoc */

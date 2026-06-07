@@ -87,11 +87,34 @@ export async function fetchContacts() {
   return data || [];
 }
 
-/** Kiem tra thuoc den gio (trong cua so 30 phut) */
-export function getDueMedications(medications, windowMinutes = 30) {
+/** Lay log uong thuoc trong ngay hom nay (gio local thiet bi) */
+export async function fetchTodayMedicationLogs() {
+  const sb = await getSupabase();
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  const { data, error } = await sb
+    .from("medication_logs")
+    .select("medication_id")
+    .gte("taken_at", start.toISOString())
+    .lte("taken_at", end.toISOString());
+  if (error) throw error;
+  return data || [];
+}
+
+/** Tap medication_id da uong hom nay */
+export function buildTakenTodaySet(logs) {
+  return new Set((logs || []).map((row) => row.medication_id));
+}
+
+/** Kiem tra thuoc den gio (trong cua so windowMinutes) va chua uong hom nay */
+export function getDueMedications(medications, windowMinutes = 30, takenIds = null) {
+  const taken = takenIds instanceof Set ? takenIds : new Set();
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   return medications.filter((med) => {
+    if (taken.has(med.id)) return false;
     const [h, m] = med.time.split(":").map(Number);
     const medMin = h * 60 + m;
     const diff = nowMin - medMin;
@@ -99,22 +122,30 @@ export function getDueMedications(medications, windowMinutes = 30) {
   });
 }
 
-/** Tao cau tra loi ve thuoc */
-export function describeMedicationStatus(medications) {
-  const due = getDueMedications(medications);
+/** Tao cau tra loi ve thuoc (bo qua thuoc da uong hom nay) */
+export function describeMedicationStatus(medications, takenIds = null) {
+  const taken = takenIds instanceof Set ? takenIds : new Set();
+  const due = getDueMedications(medications, 30, taken);
   if (due.length > 0) {
     const names = due.map((m) => `${m.name}${m.dose ? ` (${m.dose})` : ""}`).join(", ");
     return `Yes, it is time to take your medicine: ${names}.`;
   }
+
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const upcoming = medications
+    .filter((m) => !taken.has(m.id))
     .map((m) => {
       const [h, min] = m.time.split(":").map(Number);
       return { med: m, min: h * 60 + min };
     })
     .filter((x) => x.min > nowMin)
     .sort((a, b) => a.min - b.min);
+
   if (upcoming.length === 0) {
+    const anyLeft = medications.some((m) => !taken.has(m.id));
+    if (!anyLeft && medications.length > 0) {
+      return "You have taken all your medicine for today. Well done!";
+    }
     return "You have no more medicine scheduled for today. Well done!";
   }
   const next = upcoming[0].med;
@@ -138,13 +169,26 @@ export async function logMedicationTaken(medicationId, userId) {
   if (error) throw error;
 }
 
-/** Thong tin lan uong thuoc tiep theo + dem nguoc */
-export function getMedicationScheduleInfo(medications) {
+/** Thong tin lan uong thuoc tiep theo + dem nguoc (bo qua thuoc da uong hom nay) */
+export function getMedicationScheduleInfo(medications, takenIds = null) {
+  const taken = takenIds instanceof Set ? takenIds : new Set();
+
   if (!medications || medications.length === 0) {
-    return { state: "none", countdownText: "--:--:--", label: "No medicines scheduled" };
+    return { state: "none", countdownText: "--:--", label: "No medicines scheduled", med: null };
   }
 
-  const due = getDueMedications(medications);
+  const pending = medications.filter((m) => !taken.has(m.id));
+  if (pending.length === 0) {
+    return {
+      state: "done",
+      med: null,
+      secondsUntil: 0,
+      countdownText: "Done",
+      label: "All medicines taken today",
+    };
+  }
+
+  const due = getDueMedications(pending, 30, taken);
   if (due.length > 0) {
     const m = due[0];
     return {
@@ -163,7 +207,7 @@ export function getMedicationScheduleInfo(medications) {
   let bestMed = null;
   let bestDiff = Infinity;
 
-  for (const med of medications) {
+  for (const med of pending) {
     const [h, m] = med.time.split(":").map(Number);
     let targetSec = h * 3600 + m * 60;
     if (targetSec <= nowSec) targetSec += 24 * 3600;

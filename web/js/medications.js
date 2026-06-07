@@ -2,7 +2,10 @@
  * medications.js - Trang quan ly thuoc
  */
 
-import { requireAuth, fetchMedications, getDueMedications, logMedicationTaken } from "./supabase-client.js";
+import {
+  requireAuth, fetchMedications, getDueMedications, logMedicationTaken,
+  fetchTodayMedicationLogs, buildTakenTodaySet,
+} from "./supabase-client.js";
 import { onAuthReady } from "./auth.js";
 import { getSupabase } from "./supabase-client.js";
 
@@ -17,7 +20,9 @@ function escapeHtml(s) {
 async function renderList() {
   const list = document.getElementById("med-list");
   const meds = await fetchMedications();
-  const due = getDueMedications(meds);
+  const logs = await fetchTodayMedicationLogs();
+  const takenIds = buildTakenTodaySet(logs);
+  const due = getDueMedications(meds, 30, takenIds);
   const dueIds = new Set(due.map((m) => m.id));
 
   if (meds.length === 0) {
@@ -25,11 +30,14 @@ async function renderList() {
     return;
   }
 
-  list.innerHTML = meds.map((m) => `
+  list.innerHTML = meds.map((m) => {
+    const taken = takenIds.has(m.id);
+    return `
     <div class="list-card ${dueIds.has(m.id) ? "due" : ""}" data-id="${m.id}">
       <div>
         <div class="font-bold text-lg">${escapeHtml(m.name)}</div>
         <div class="text-slate-400">${escapeHtml(m.time)}${m.dose ? ` · ${escapeHtml(m.dose)}` : ""}</div>
+        ${taken ? '<span class="badge-due mt-2 inline-block" style="background:#16a34a;color:#fff">Taken today</span>' : ""}
         ${dueIds.has(m.id) ? '<span class="badge-due mt-2 inline-block">Due now</span>' : ""}
       </div>
       <div class="flex flex-col gap-2">
@@ -37,13 +45,13 @@ async function renderList() {
         <button class="quick-btn bg-red-700 text-white remove-btn" data-id="${m.id}">Remove</button>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   list.querySelectorAll(".took-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await logMedicationTaken(btn.dataset.id, session.user.id);
-      btn.textContent = "Logged!";
-      btn.disabled = true;
+      renderList();
     });
   });
 

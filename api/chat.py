@@ -5,8 +5,6 @@ Nhan van ban tu frontend, tra ve intent + entity + reply.
 Frontend tu thuc thi hanh dong (Supabase, tel:, v.v.) dua tren intent.
 """
 
-from datetime import datetime
-
 from pydantic import BaseModel, Field
 
 import config
@@ -32,9 +30,9 @@ def build_reply(intent: str, entity: str | None, nlp_reply: str | None) -> str |
     Cac intent can du lieu Supabase (medication, call) de reply=None cho frontend xu ly.
     """
     if intent == "time":
-        return f"The time is {datetime.now().strftime('%I:%M %p')}."
+        return None  # frontend dung gio local cua thiet bi
     if intent == "date":
-        return f"Today is {datetime.now().strftime('%A, %B %d, %Y')}."
+        return None
     if intent in ("medication", "call", "open_app"):
         return None
     return nlp_reply

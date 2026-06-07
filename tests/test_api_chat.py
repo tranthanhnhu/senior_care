@@ -49,7 +49,7 @@ def test_chat_time_intent():
     assert r.status_code == 200
     data = r.json()
     assert data["intent"] == "time"
-    assert "time is" in data["reply"].lower()
+    assert data["reply"] is None  # frontend dung gio local thiet bi
 
 
 def test_chat_greeting():

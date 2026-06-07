@@ -20,13 +20,18 @@
 
     <div class="bg-slate-800 rounded-2xl p-8 border border-slate-700">
       <h2 class="text-xl font-bold mb-2">Sign In</h2>
-      <p class="text-slate-400 mb-6">Enter your email. We'll send you a magic link — no password needed.</p>
+      <p class="text-slate-400 mb-6">Enter your email and password. New users are registered automatically.</p>
 
       <form id="login-form">
-        <label class="block text-sm font-semibold text-slate-300 mb-2" for="email">Email address</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2" for="email">Email</label>
         <input id="email" type="email" required placeholder="you@example.com"
                class="input-lg mb-4" autocomplete="email">
-        <button id="login-btn" type="submit" class="btn-primary">Send Magic Link</button>
+
+        <label class="block text-sm font-semibold text-slate-300 mb-2" for="password">Password</label>
+        <input id="password" type="password" required placeholder="At least 6 characters"
+               class="input-lg mb-4" autocomplete="current-password" minlength="6">
+
+        <button id="login-btn" type="submit" class="btn-primary">Sign In</button>
       </form>
 
       <p id="login-message" class="mt-4 text-center text-slate-400"></p>

@@ -28,7 +28,7 @@ pip install -r requirements-desktop.txt
 
 1. Create a free project at [supabase.com](https://supabase.com)
 2. Run [`supabase/schema.sql`](supabase/schema.sql) in SQL Editor
-3. Enable Email auth + Magic Link in Authentication settings
+3. Enable Email auth — **turn OFF "Confirm email"** (instant sign-in). See [`supabase/README.md`](supabase/README.md).
 4. Set **Site URL** to `http://localhost:8000` and add redirect URL `http://localhost:8000/**`
 
 See [`supabase/README.md`](supabase/README.md) for details.

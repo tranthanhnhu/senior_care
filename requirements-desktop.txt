@@ -1,0 +1,13 @@
+# ============================================================
+# Desktop app dependencies (local only - python main.py)
+# pip install -r requirements-desktop.txt
+# ============================================================
+
+-r requirements.txt
+
+SpeechRecognition==3.10.4
+PyAudio==0.2.14
+gTTS==2.5.4
+pygame==2.6.1
+supabase==2.11.0
+pytest==8.3.4

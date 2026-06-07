@@ -14,8 +14,14 @@ AI Voice Assistant for Elderly Healthcare Support — web app with Supabase auth
 
 ### 1. Install dependencies
 
+**Web app (deploy / local server):**
 ```bash
 pip install -r requirements.txt
+```
+
+**Desktop app + tests (local only):**
+```bash
+pip install -r requirements-desktop.txt
 ```
 
 ### 2. Configure Supabase
@@ -55,6 +61,7 @@ pytest -q
 ### Desktop app (optional)
 
 ```bash
+pip install -r requirements-desktop.txt
 python main.py
 ```
 
@@ -64,7 +71,8 @@ python main.py
 2. Create account at [render.com](https://render.com)
 3. **New → Blueprint** or **Web Service** → connect repo
 4. Use settings from [`render.yaml`](render.yaml):
-   - Build: `pip install -r requirements.txt`
+   - **Runtime**: Python 3.11 (via [`runtime.txt`](runtime.txt))
+   - Build: `pip install -r requirements.txt` (web only — no pygame/PyAudio)
    - Start: `uvicorn api.app:app --host 0.0.0.0 --port $PORT`
 5. Add environment variables (same as `.env`)
 6. Update Supabase **Site URL** and **Redirect URLs** to your Render URL

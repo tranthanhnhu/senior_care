@@ -1,115 +1,34 @@
 /**
- * auth.js - Supabase authentication (email + password, dang nhap ngay)
+ * auth.js - Local auth (khong can Supabase)
  */
 
-import { getSupabase, seedDemoDataIfEmpty } from "./supabase-client.js";
+import { seedDemoDataIfEmpty } from "./supabase-client.js";
 
-/** Dang nhap bang email + mat khau. Neu chua co tai khoan thi tu dong dang ky. */
-export async function loginWithPassword(email, password) {
-  const sb = await getSupabase();
-  const trimmedEmail = email.trim();
-  const trimmedPassword = password.trim();
+const LOCAL_SESSION = { user: { id: "local-user", email: "user@local" } };
 
-  // Thu dang nhap truoc
-  let { data, error } = await sb.auth.signInWithPassword({
-    email: trimmedEmail,
-    password: trimmedPassword,
-  });
-
-  // Chua co tai khoan -> tu dong tao moi (can tat Confirm email tren Supabase)
-  if (error) {
-    const msg = (error.message || "").toLowerCase();
-    const notFound = msg.includes("invalid") || msg.includes("credentials") || msg.includes("not found");
-    if (notFound) {
-      const { data: signUpData, error: signUpError } = await sb.auth.signUp({
-        email: trimmedEmail,
-        password: trimmedPassword,
-      });
-      if (signUpError) throw signUpError;
-      if (signUpData.session) {
-        data = signUpData;
-        error = null;
-      } else {
-        // Thu dang nhap lai sau khi dang ky
-        const retry = await sb.auth.signInWithPassword({
-          email: trimmedEmail,
-          password: trimmedPassword,
-        });
-        data = retry.data;
-        error = retry.error;
-      }
-    }
-  }
-
-  if (error) throw error;
-  if (!data.session) {
-    throw new Error(
-      "Could not sign in. In Supabase, turn OFF 'Confirm email' under Authentication → Providers → Email."
-    );
-  }
-  return data.session;
+export async function loginWithPassword(email) {
+  if (email) localStorage.setItem("sc_email", email);
+  return LOCAL_SESSION;
 }
 
-/** Dang xuat */
 export async function logout() {
-  const sb = await getSupabase();
-  await sb.auth.signOut();
-  window.location.href = "/login";
+  window.location.href = "/";
 }
 
-/** Khoi tao sau khi dang nhap: seed demo neu can */
 export async function onAuthReady(session) {
   if (!session) return;
-  await seedDemoDataIfEmpty(session.user.id);
+  await seedDemoDataIfEmpty();
 }
 
-/** Kiem tra session hien tai */
 export async function handleAuthCallback() {
-  const sb = await getSupabase();
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    await onAuthReady(session);
-    return session;
-  }
-  return null;
+  return LOCAL_SESSION;
 }
 
-/** Lay email hien tai */
 export async function getCurrentUserEmail() {
-  const sb = await getSupabase();
-  const { data: { session } } = await sb.auth.getSession();
-  return session?.user?.email || "";
+  return localStorage.getItem("sc_email") || "user@local";
 }
 
-/** Khoi tao trang login */
 export function initLoginPage() {
-  const form = document.getElementById("login-form");
-  const msg = document.getElementById("login-message");
-  const btn = document.getElementById("login-btn");
-
-  getSupabase().then(async (sb) => {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) window.location.href = "/";
-  });
-
-  form?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    if (!email || !password) return;
-
-    btn.disabled = true;
-    msg.textContent = "Signing in...";
-    msg.className = "text-sky-400 text-center mt-4";
-
-    try {
-      const session = await loginWithPassword(email, password);
-      await onAuthReady(session);
-      window.location.href = "/";
-    } catch (err) {
-      msg.textContent = err.message || "Sign in failed. Please try again.";
-      msg.className = "text-red-400 text-center mt-4";
-      btn.disabled = false;
-    }
-  });
+  // Khong can dang nhap, chuyen thang ve trang chu
+  window.location.href = "/";
 }

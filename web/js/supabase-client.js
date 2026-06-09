@@ -1,120 +1,117 @@
 /**
- * supabase-client.js - Khoi tao Supabase client tu /api/config
+ * supabase-client.js - localStorage-based storage (khong can Supabase)
  */
 
-let _supabase = null;
-let _config = null;
+const LOCAL_USER = { id: "local-user", email: "user@local" };
+const LOCAL_SESSION = { user: LOCAL_USER };
 
-/** Lay cau hinh public tu backend */
+const KEYS = {
+  meds: "sc_medications",
+  contacts: "sc_contacts",
+  logs: "sc_logs",
+};
+
+function loadJSON(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  } catch { return fallback; }
+}
+
+function saveJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function nextId(items) {
+  if (!items || items.length === 0) return 1;
+  return Math.max(...items.map((i) => i.id || 0)) + 1;
+}
+
 export async function loadConfig() {
-  if (_config) return _config;
-  const res = await fetch("/api/config");
-  if (!res.ok) throw new Error("Could not load app config");
-  _config = await res.json();
-  return _config;
+  return { supabaseUrl: "", supabaseAnonKey: "", appTitle: "Senior Care Assistant", openaiEnabled: true };
 }
 
-/** Tra ve Supabase client (khoi tao lazy) */
 export async function getSupabase() {
-  if (_supabase) return _supabase;
-  const cfg = await loadConfig();
-  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-    throw new Error("Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env");
-  }
-  const { createClient } = window.supabase;
-  _supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-  return _supabase;
+  return null;
 }
 
-/** Kiem tra session, redirect ve login neu chua dang nhap */
 export async function requireAuth() {
-  const sb = await getSupabase();
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    window.location.href = "/login";
-    return null;
-  }
-  return session;
+  return LOCAL_SESSION;
 }
 
-/** Du lieu mau seed khi user moi chua co thuoc/danh ba */
 const DEMO_MEDS = [
-  { name: "Blood Pressure Pill", time: "08:00", dose: "1 tablet" },
-  { name: "Vitamin D", time: "12:30", dose: "1 capsule" },
-  { name: "Heart Medicine", time: "20:00", dose: "1 tablet" },
+  { id: 1, name: "Blood Pressure Pill", time: "08:00", dose: "1 tablet", user_id: "local-user" },
+  { id: 2, name: "Vitamin D", time: "12:30", dose: "1 capsule", user_id: "local-user" },
+  { id: 3, name: "Heart Medicine", time: "20:00", dose: "1 tablet", user_id: "local-user" },
 ];
 
 const DEMO_CONTACTS = [
-  { name: "daughter", phone: "+1 555 0101" },
-  { name: "son", phone: "+1 555 0102" },
-  { name: "doctor", phone: "+1 555 0199" },
-  { name: "emergency", phone: "911" },
-  { name: "neighbor", phone: "+1 555 0123" },
+  { id: 1, name: "daughter", phone: "+1 555 0101", user_id: "local-user" },
+  { id: 2, name: "son", phone: "+1 555 0102", user_id: "local-user" },
+  { id: 3, name: "doctor", phone: "+1 555 0199", user_id: "local-user" },
+  { id: 4, name: "emergency", phone: "911", user_id: "local-user" },
+  { id: 5, name: "neighbor", phone: "+1 555 0123", user_id: "local-user" },
 ];
 
-/** Seed du lieu demo neu bang trong */
-export async function seedDemoDataIfEmpty(userId) {
-  const sb = await getSupabase();
-
-  const { data: meds } = await sb.from("medications").select("id").limit(1);
-  if (!meds || meds.length === 0) {
-    await sb.from("medications").insert(
-      DEMO_MEDS.map((m) => ({ ...m, user_id: userId }))
-    );
-  }
-
-  const { data: contacts } = await sb.from("contacts").select("id").limit(1);
-  if (!contacts || contacts.length === 0) {
-    await sb.from("contacts").insert(
-      DEMO_CONTACTS.map((c) => ({ ...c, user_id: userId }))
-    );
-  }
+export async function seedDemoDataIfEmpty() {
+  if (!localStorage.getItem(KEYS.meds)) saveJSON(KEYS.meds, DEMO_MEDS);
+  if (!localStorage.getItem(KEYS.contacts)) saveJSON(KEYS.contacts, DEMO_CONTACTS);
 }
 
-/** Lay danh sach thuoc */
 export async function fetchMedications() {
-  const sb = await getSupabase();
-  const { data, error } = await sb.from("medications").select("*").order("time");
-  if (error) throw error;
-  return data || [];
+  return loadJSON(KEYS.meds, DEMO_MEDS);
 }
 
-/** Lay danh sach lien he */
 export async function fetchContacts() {
-  const sb = await getSupabase();
-  const { data, error } = await sb.from("contacts").select("*").order("name");
-  if (error) throw error;
-  return data || [];
+  return loadJSON(KEYS.contacts, DEMO_CONTACTS);
 }
 
-/** Lay log uong thuoc trong ngay hom nay (gio local thiet bi) */
 export async function fetchTodayMedicationLogs() {
-  const sb = await getSupabase();
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  const { data, error } = await sb
-    .from("medication_logs")
-    .select("medication_id")
-    .gte("taken_at", start.toISOString())
-    .lte("taken_at", end.toISOString());
-  if (error) throw error;
-  return data || [];
+  const allLogs = loadJSON(KEYS.logs, []);
+  const today = new Date().toDateString();
+  return allLogs.filter((l) => new Date(l.taken_at).toDateString() === today);
 }
 
-/** Tap medication_id da uong hom nay */
 export function buildTakenTodaySet(logs) {
-  return new Set((logs || []).map((row) => row.medication_id));
+  return new Set((logs || []).map((row) => String(row.medication_id)));
 }
 
-/** Kiem tra thuoc den gio (trong cua so windowMinutes) va chua uong hom nay */
+export async function logMedicationTaken(medicationId) {
+  const allLogs = loadJSON(KEYS.logs, []);
+  allLogs.push({ medication_id: String(medicationId), taken_at: new Date().toISOString() });
+  saveJSON(KEYS.logs, allLogs);
+}
+
+export async function addMedication(name, time, dose) {
+  const meds = loadJSON(KEYS.meds, []);
+  meds.push({ id: nextId(meds), name, time, dose: dose || "", user_id: "local-user" });
+  meds.sort((a, b) => a.time.localeCompare(b.time));
+  saveJSON(KEYS.meds, meds);
+}
+
+export async function removeMedication(id) {
+  const meds = loadJSON(KEYS.meds, []);
+  saveJSON(KEYS.meds, meds.filter((m) => String(m.id) !== String(id)));
+}
+
+export async function addContact(name, phone) {
+  const contacts = loadJSON(KEYS.contacts, []);
+  contacts.push({ id: nextId(contacts), name: name.toLowerCase(), phone, user_id: "local-user" });
+  contacts.sort((a, b) => a.name.localeCompare(b.name));
+  saveJSON(KEYS.contacts, contacts);
+}
+
+export async function removeContact(id) {
+  const contacts = loadJSON(KEYS.contacts, []);
+  saveJSON(KEYS.contacts, contacts.filter((c) => String(c.id) !== String(id)));
+}
+
 export function getDueMedications(medications, windowMinutes = 30, takenIds = null) {
   const taken = takenIds instanceof Set ? takenIds : new Set();
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   return medications.filter((med) => {
-    if (taken.has(med.id)) return false;
+    if (taken.has(String(med.id))) return false;
     const [h, m] = med.time.split(":").map(Number);
     const medMin = h * 60 + m;
     const diff = nowMin - medMin;
@@ -122,7 +119,6 @@ export function getDueMedications(medications, windowMinutes = 30, takenIds = nu
   });
 }
 
-/** Tao cau tra loi ve thuoc (bo qua thuoc da uong hom nay) */
 export function describeMedicationStatus(medications, takenIds = null) {
   const taken = takenIds instanceof Set ? takenIds : new Set();
   const due = getDueMedications(medications, 30, taken);
@@ -133,7 +129,7 @@ export function describeMedicationStatus(medications, takenIds = null) {
 
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const upcoming = medications
-    .filter((m) => !taken.has(m.id))
+    .filter((m) => !taken.has(String(m.id)))
     .map((m) => {
       const [h, min] = m.time.split(":").map(Number);
       return { med: m, min: h * 60 + min };
@@ -142,7 +138,7 @@ export function describeMedicationStatus(medications, takenIds = null) {
     .sort((a, b) => a.min - b.min);
 
   if (upcoming.length === 0) {
-    const anyLeft = medications.some((m) => !taken.has(m.id));
+    const anyLeft = medications.some((m) => !taken.has(String(m.id)));
     if (!anyLeft && medications.length > 0) {
       return "You have taken all your medicine for today. Well done!";
     }
@@ -152,24 +148,12 @@ export function describeMedicationStatus(medications, takenIds = null) {
   return `Not right now. Your next medicine is ${next.name} at ${next.time}.`;
 }
 
-/** Tim lien he theo ten (khong phan biet hoa thuong) */
 export function findContact(contacts, name) {
   if (!name) return null;
   const key = name.trim().toLowerCase();
   return contacts.find((c) => c.name.toLowerCase() === key) || null;
 }
 
-/** Ghi log da uong thuoc */
-export async function logMedicationTaken(medicationId, userId) {
-  const sb = await getSupabase();
-  const { error } = await sb.from("medication_logs").insert({
-    medication_id: medicationId,
-    user_id: userId,
-  });
-  if (error) throw error;
-}
-
-/** Thong tin lan uong thuoc tiep theo + dem nguoc (bo qua thuoc da uong hom nay) */
 export function getMedicationScheduleInfo(medications, takenIds = null) {
   const taken = takenIds instanceof Set ? takenIds : new Set();
 
@@ -177,7 +161,7 @@ export function getMedicationScheduleInfo(medications, takenIds = null) {
     return { state: "none", countdownText: "--:--", label: "No medicines scheduled", med: null };
   }
 
-  const pending = medications.filter((m) => !taken.has(m.id));
+  const pending = medications.filter((m) => !taken.has(String(m.id)));
   if (pending.length === 0) {
     return {
       state: "done",
@@ -232,7 +216,6 @@ export function getMedicationScheduleInfo(medications, takenIds = null) {
   };
 }
 
-/** Format giay thanh HH:MM:SS */
 export function formatCountdown(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));
   const hrs = Math.floor(s / 3600);

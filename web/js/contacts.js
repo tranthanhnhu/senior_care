@@ -2,9 +2,8 @@
  * contacts.js - Trang danh ba + goi dien that (tel:)
  */
 
-import { requireAuth, fetchContacts } from "./supabase-client.js";
+import { requireAuth, fetchContacts, addContact, removeContact } from "./supabase-client.js";
 import { onAuthReady } from "./auth.js";
-import { getSupabase } from "./supabase-client.js";
 
 let session = null;
 
@@ -55,11 +54,7 @@ function setupAddForm() {
     const phone = document.getElementById("contact-phone").value.trim();
     if (!name || !phone) return;
 
-    const sb = await getSupabase();
-    const { error } = await sb.from("contacts").insert({
-      name: name.toLowerCase(), phone, user_id: session.user.id,
-    });
-    if (error) { alert("Could not add contact."); return; }
+    await addContact(name, phone);
     document.getElementById("add-form").reset();
     renderList();
   });

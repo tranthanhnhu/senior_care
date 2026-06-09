@@ -1,8 +1,9 @@
 """
-api/stt.py - Speech-to-Text qua OpenAI Whisper (fallback cho Chrome tren iPhone).
+api/stt.py - Speech-to-Text qua Groq Whisper (mien phi, nhanh).
 
-Apple chi cho phep Web Speech API tren Safari iOS. Chrome/Firefox tren iPhone
-khong co SpeechRecognition -> ghi am bang MediaRecorder va gui len day.
+Fallback cho trinh duyet khong ho tro Web Speech API (Firefox, Chrome iOS).
+Tren Chrome/Safari desktop, STT chay truc tiep trong trinh duyet, endpoint
+nay khong can duoc goi.
 """
 
 import os
@@ -14,11 +15,12 @@ import config
 
 
 async def transcribe_upload(audio: UploadFile) -> dict:
-    """Nhan file am thanh tu trinh duyet, tra ve van ban."""
-    if not config.OPENAI_API_KEY:
+    """Nhan file am thanh tu trinh duyet, tra ve van ban qua Groq Whisper."""
+
+    if not config.GROQ_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="Voice upload requires OPENAI_API_KEY (Whisper). Use Safari or type instead.",
+            detail="Voice upload requires GROQ_API_KEY. Add it to your .env file.",
         )
 
     content = await audio.read()
@@ -35,18 +37,22 @@ async def transcribe_upload(audio: UploadFile) -> dict:
             tmp.write(content)
             tmp_path = tmp.name
 
-        from openai import OpenAI
-        client = OpenAI(api_key=config.OPENAI_API_KEY)
+        from groq import Groq
+        client = Groq(api_key=config.GROQ_API_KEY)
+
         with open(tmp_path, "rb") as audio_file:
             result = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
+                model="whisper-large-v3-turbo",
+                file=(audio.filename or f"audio{suffix}", audio_file),
                 language="en",
+                response_format="text",
             )
-        text = (result.text or "").strip()
+
+        text = (result if isinstance(result, str) else getattr(result, "text", "")).strip()
         if not text:
             return {"text": None, "error": "Could not understand audio"}
         return {"text": text}
+
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     finally:

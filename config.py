@@ -60,6 +60,9 @@ USE_OPENAI = bool(OPENROUTER_API_KEY)
 OPENAI_API_KEY = OPENROUTER_API_KEY
 OPENAI_MODEL = OPENROUTER_MODEL
 
+# Groq — STT mien phi (Whisper)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
 # ------------------------------------------------------------------
 # Cau hinh Supabase (web app)
 # ------------------------------------------------------------------

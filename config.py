@@ -48,15 +48,20 @@ STT_PHRASE_TIME_LIMIT = 12
 REMINDER_CHECK_INTERVAL = 30
 
 # ------------------------------------------------------------------
-# Cau hinh NLP (OpenAI - TUY CHON, mac dinh TAT de tiet kiem chi phi)
+# Cau hinh NLP (OpenRouter - TUY CHON, mac dinh BAT neu co key)
 # ------------------------------------------------------------------
-# Dat True neu ban muon dung OpenAI cho phan tro chuyen tu do.
+# Dat True neu ban muon dung OpenRouter cho phan tro chuyen tu do.
 # Khi False, he thong dung hoan toan rule-based offline (mien phi, khong can key).
-USE_OPENAI = True
-# Lay API key tu bien moi truong (an toan hon viet truc tiep trong code)
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-# Model gia re neu co dung OpenAI
-OPENAI_MODEL = "gpt-4o-mini"
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_MODEL = os.environ.get("LANGCHAIN_MODEL_NAME", "openai/gpt-4o-mini")
+USE_OPENAI = bool(OPENROUTER_API_KEY)
+# Giu tuong thich nguoc voi code cu
+OPENAI_API_KEY = OPENROUTER_API_KEY
+OPENAI_MODEL = OPENROUTER_MODEL
+
+# Groq — STT mien phi (Whisper)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 # ------------------------------------------------------------------
 # Cau hinh Supabase (web app)

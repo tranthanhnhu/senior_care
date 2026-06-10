@@ -4,10 +4,9 @@
 
 import {
   requireAuth, fetchMedications, getDueMedications, logMedicationTaken,
-  fetchTodayMedicationLogs, buildTakenTodaySet,
+  fetchTodayMedicationLogs, buildTakenTodaySet, addMedication, removeMedication,
 } from "./supabase-client.js";
 import { onAuthReady } from "./auth.js";
-import { getSupabase } from "./supabase-client.js";
 
 let session = null;
 
@@ -58,8 +57,7 @@ async function renderList() {
   list.querySelectorAll(".remove-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm("Remove this medicine?")) return;
-      const sb = await getSupabase();
-      await sb.from("medications").delete().eq("id", btn.dataset.id);
+      await removeMedication(btn.dataset.id);
       renderList();
     });
   });
@@ -73,14 +71,7 @@ function setupAddForm() {
     const dose = document.getElementById("med-dose").value.trim();
     if (!name || !time) return;
 
-    const sb = await getSupabase();
-    const { error } = await sb.from("medications").insert({
-      name, time, dose, user_id: session.user.id,
-    });
-    if (error) {
-      alert("Could not add. Use time format HH:MM (e.g. 08:00).");
-      return;
-    }
+    await addMedication(name, time, dose);
     document.getElementById("add-form").reset();
     renderList();
   });
